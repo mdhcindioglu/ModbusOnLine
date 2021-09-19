@@ -3,7 +3,6 @@
 	<PropertyGroup>
 		<TargetFramework>net5.0</TargetFramework>
 		<AllowUntrustedCertificate>True</AllowUntrustedCertificate>
-		<!--<UserSecretsId>aspnet-Modbus-94CF5DF9-6FB8-443C-B01C-8FB785767E73</UserSecretsId>-->
 		<AspNetCoreHostingModel>OutOfProcess</AspNetCoreHostingModel>
 	</PropertyGroup>
 
