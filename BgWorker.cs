@@ -20,32 +20,41 @@ namespace Modbus
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            short DeviceAddress = 1;
+            string IP = "127.0.0.1";
+            int ReadingTime = 10000; //1 second = 1000
+            ModbusConnetion modbus = new(DeviceAddress, IP);
             Logger<BgWorker> logger = new Logger<BgWorker>(new LoggerFactory());
 
-            try
+            using var scope = serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetService<DataContext>();
+            logger = scope.ServiceProvider.GetService<Logger<BgWorker>>();
+
+            while(!stoppingToken.IsCancellationRequested)
             {
-                using var scope = serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetService<DataContext>();
-                logger = scope.ServiceProvider.GetService<Logger<BgWorker>>();
-
-                while(!stoppingToken.IsCancellationRequested)
+                try
                 {
-                    PlcData plcData = new();
-                    plcData.D1 = My.Random(4);
-                    plcData.D2 = My.Random(4);
-                    plcData.D3 = My.Random(4);
-                    plcData.D4 = My.Random(4);
-                    plcData.D5 = My.Random(4);
-                    plcData.D6 = My.Random(4);
-                    plcData.CreationDate = DateTime.Now;
+                    if(!modbus.IsConnected) modbus.Connect();
+                    var response = modbus.ReadHolding(0x1000, 6);
+                    if(response != null && response.Registers != null)
+                    {
+                        PlcData plcData = new();
+                        plcData.D1 = response.Registers[0];
+                        plcData.D2 = response.Registers[1];
+                        plcData.D3 = response.Registers[2];
+                        plcData.D4 = response.Registers[3];
+                        plcData.D5 = response.Registers[4];
+                        plcData.D6 = response.Registers[5];
+                        plcData.CreationDate = DateTime.Now;
 
-                    await db.PlcDatas.AddAsync(plcData, stoppingToken);
-                    await db.SaveChangesAsync(stoppingToken);
+                        await db.PlcDatas.AddAsync(plcData, stoppingToken);
+                        await db.SaveChangesAsync(stoppingToken);
+                    }
 
-                    await Task.Delay(10000, stoppingToken);
+                    await Task.Delay(ReadingTime, stoppingToken);
                 }
+                catch(Exception ex) { logger.LogError(ex.Message); }
             }
-            catch(Exception ex) { logger.LogError(ex.Message); }
         }
     }
 }
